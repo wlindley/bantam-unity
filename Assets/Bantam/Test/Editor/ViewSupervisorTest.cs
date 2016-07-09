@@ -81,6 +81,16 @@ namespace Bantam.Unity.Test
 			Assert.AreEqual(Quaternion.identity, childObj.transform.localRotation);
 			Assert.AreEqual(Vector3.one, childObj.transform.localScale);
 		}
+
+		[Test]
+		public void BoundViewIsDestroyedWhenModelIsDestroyed()
+		{
+			testObj.For<DummyModel>().Create<DummyView>();
+			DummyModel model = null;
+			modelRegistry.Create<DummyModel>(mdl => model = mdl);
+			modelRegistry.Destroy<DummyModel>(model);
+			Assert.AreEqual(0, testObj.GetViews<DummyView>().Count);
+		}
 	}
 
 	public class DummyModel : Model

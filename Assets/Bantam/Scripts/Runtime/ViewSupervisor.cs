@@ -9,12 +9,15 @@ namespace Bantam.Unity
 	{
 		private List<ViewBinding> viewBindings;
 		private Dictionary<Type, List<View>> views;
+		private Dictionary<Model, List<View>> modelViewMap;
 
 		public ViewSupervisor(EventBus eventBus)
 		{
 			viewBindings = new List<ViewBinding>();
 			views = new Dictionary<Type, List<View>>();
+			modelViewMap = new Dictionary<Model, List<View>>();
 			eventBus.AddListener<ModelCreatedEvent>(HandleModelCreated);
+			eventBus.AddListener<ModelDestroyedEvent>(HandleModelDestroyed);
 		}
 
 		public ViewBindingContinuation<T> For<T>() where T : class, Model, new()
@@ -32,12 +35,15 @@ namespace Bantam.Unity
 			viewBindings.Add(binding);
 		}
 
-		internal void RegisterView<U>(View view) where U : View
+		internal void RegisterView<U>(Model model, View view) where U : View
 		{
 			var type = typeof(U);
 			if (!views.ContainsKey(type))
 				views[type] = new List<View>();
+			if (!modelViewMap.ContainsKey(model))
+				modelViewMap[model] = new List<View>();
 			views[type].Add(view);
+			modelViewMap[model].Add(view);
 		}
 
 		private void HandleModelCreated(ModelCreatedEvent evt)
@@ -45,6 +51,30 @@ namespace Bantam.Unity
 			foreach (var binding in viewBindings)
 				if (binding.MatchesModelType(evt.type))
 					binding.CreateViewForModel(evt.model);
+		}
+
+		private void HandleModelDestroyed(ModelDestroyedEvent evt)
+		{
+			foreach (var pair in modelViewMap)
+			{
+				if (evt.model == pair.Key)
+				{
+					foreach (var view in pair.Value)
+						DestroyView(view);
+					pair.Value.Clear();
+				}
+			}
+		}
+
+		private void DestroyView(View view)
+		{
+			foreach (var pair in views)
+				pair.Value.Remove(view);
+			#if UNITY_EDITOR
+			GameObject.DestroyImmediate(view);
+			#else
+			GameObject.Destroy(view);
+			#endif
 		}
 	}
 
@@ -110,7 +140,7 @@ namespace Bantam.Unity
 			var gameObj = GetGameObject();
 			var view = gameObj.AddComponent<U>();
 			view.Model = model as T;
-			viewSupervisor.RegisterView<U>(view);
+			viewSupervisor.RegisterView<U>(model, view);
 		}
 
 		public void SetTargetGameObject(GameObject gameObj)
