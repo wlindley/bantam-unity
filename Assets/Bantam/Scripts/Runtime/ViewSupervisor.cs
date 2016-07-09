@@ -7,12 +7,14 @@ namespace Bantam.Unity
 {
 	public class ViewSupervisor
 	{
+		private EventBus eventBus;
 		private List<ViewBinding> viewBindings;
 		private Dictionary<Type, List<View>> views;
 		private Dictionary<Model, List<View>> modelViewMap;
 
 		public ViewSupervisor(EventBus eventBus)
 		{
+			this.eventBus = eventBus;
 			viewBindings = new List<ViewBinding>();
 			views = new Dictionary<Type, List<View>>();
 			modelViewMap = new Dictionary<Model, List<View>>();
@@ -44,6 +46,9 @@ namespace Bantam.Unity
 				modelViewMap[model] = new List<View>();
 			views[type].Add(view);
 			modelViewMap[model].Add(view);
+			eventBus.Dispatch<ViewCreatedEvent>(evt => {
+				evt.view = view;
+			});
 		}
 
 		private void HandleModelCreated(ModelCreatedEvent evt)
@@ -70,6 +75,11 @@ namespace Bantam.Unity
 		{
 			foreach (var pair in views)
 				pair.Value.Remove(view);
+
+			eventBus.Dispatch<ViewDestroyedEvent>(evt => {
+				evt.view = view;
+			});
+
 			#if UNITY_EDITOR
 			GameObject.DestroyImmediate(view);
 			#else

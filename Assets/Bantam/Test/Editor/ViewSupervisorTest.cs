@@ -91,6 +91,38 @@ namespace Bantam.Unity.Test
 			modelRegistry.Destroy<DummyModel>(model);
 			Assert.AreEqual(0, testObj.GetViews<DummyView>().Count);
 		}
+
+		[Test]
+		public void DispatchesEventWhenViewIsCreated()
+		{
+			var wasCalled = false;
+			testObj.For<DummyModel>().Create<DummyView>();
+			eventBus.AddListener<ViewCreatedEvent>(evt => {
+				var viewObject = testObj.GetViews<DummyView>()[0];
+				Assert.AreEqual(viewObject, evt.view);
+				wasCalled = true;
+			});
+			modelRegistry.Create<DummyModel>();
+			Assert.IsTrue(wasCalled);
+		}
+
+		[Test]
+		public void DispatchesEventWhenViewIsDestroyed()
+		{
+			var wasCalled = false;
+			testObj.For<DummyModel>().Create<DummyView>();
+			DummyModel expectedModel = null;
+			modelRegistry.Create<DummyModel>(mdl => expectedModel = mdl);
+			var expectedView = testObj.GetViews<DummyView>()[0];
+
+			eventBus.AddListener<ViewDestroyedEvent>(evt => {
+				Assert.AreEqual(expectedView, evt.view);
+				wasCalled = true;
+			});
+			modelRegistry.Destroy<DummyModel>(expectedModel);
+
+			Assert.IsTrue(wasCalled);
+		}
 	}
 
 	public class DummyModel : Model
