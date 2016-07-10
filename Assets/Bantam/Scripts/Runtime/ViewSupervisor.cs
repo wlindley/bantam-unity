@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Collections.ObjectModel;
 
 namespace Bantam.Unity
 {
@@ -9,15 +8,16 @@ namespace Bantam.Unity
 	{
 		private EventBus eventBus;
 		private List<ViewBinding> viewBindings;
-		private Dictionary<Type, List<View>> views;
+		private Dictionary<Type, ViewListWrapper> views;
 		private Dictionary<Model, List<View>> modelViewMap;
 
 		public ViewSupervisor(EventBus eventBus)
 		{
 			this.eventBus = eventBus;
 			viewBindings = new List<ViewBinding>();
-			views = new Dictionary<Type, List<View>>();
+			views = new Dictionary<Type, ViewListWrapper>();
 			modelViewMap = new Dictionary<Model, List<View>>();
+
 			eventBus.AddListener<ModelCreatedEvent>(HandleModelCreated);
 			eventBus.AddListener<ModelDestroyedEvent>(HandleModelDestroyed);
 		}
@@ -27,9 +27,9 @@ namespace Bantam.Unity
 			return new ViewBindingContinuation<T>(this);
 		}
 
-		public ReadOnlyCollection<View> GetViews<U>() where U : View
+		public IEnumerable<U> GetViews<U>() where U : View
 		{
-			return views[typeof(U)].AsReadOnly();
+			return views[typeof(U)].GetViews<U>();
 		}
 
 		internal void RegisterBinding(ViewBinding binding)
@@ -39,16 +39,23 @@ namespace Bantam.Unity
 
 		internal void RegisterView<U>(Model model, View view) where U : View
 		{
-			var type = typeof(U);
-			if (!views.ContainsKey(type))
-				views[type] = new List<View>();
-			if (!modelViewMap.ContainsKey(model))
-				modelViewMap[model] = new List<View>();
-			views[type].Add(view);
+			EnsureViewModelExists<U>(model);
+
+			views[typeof(U)].AddView<U>(view as U);
 			modelViewMap[model].Add(view);
+
 			eventBus.Dispatch<ViewCreatedEvent>(evt => {
 				evt.view = view;
 			});
+		}
+
+		private void EnsureViewModelExists<U>(Model model) where U : View
+		{
+			var type = typeof(U);
+			if (!views.ContainsKey(type))
+				views[type] = new ViewListWrapper<U>();
+			if (!modelViewMap.ContainsKey(model))
+				modelViewMap[model] = new List<View>();
 		}
 
 		private void HandleModelCreated(ModelCreatedEvent evt)
@@ -74,16 +81,16 @@ namespace Bantam.Unity
 		private void DestroyView(View view)
 		{
 			foreach (var pair in views)
-				pair.Value.Remove(view);
+				pair.Value.RemoveView(view);
 
 			eventBus.Dispatch<ViewDestroyedEvent>(evt => {
 				evt.view = view;
 			});
 
 			#if UNITY_EDITOR
-			GameObject.DestroyImmediate(view);
+				GameObject.DestroyImmediate(view);
 			#else
-			GameObject.Destroy(view);
+				GameObject.Destroy(view);
 			#endif
 		}
 	}
@@ -121,61 +128,30 @@ namespace Bantam.Unity
 		}
 	}
 
-	internal interface ViewBinding
+	internal interface ViewListWrapper
 	{
-		bool MatchesModelType(Type modelType);
-		void CreateViewForModel(Model model);
-		void SetTargetGameObject(GameObject gameObj);
-		void SetParentGameObject(GameObject gameObj);
+		void AddView<U>(U view) where U : View;
+		void RemoveView(View view);
+		IEnumerable<U> GetViews<U>() where U : View;
 	}
 
-	internal class ViewBinding<T, U> : ViewBinding where T : class, Model, new() where U : View<T>
+	internal class ViewListWrapper<T> : ViewListWrapper where T : View
 	{
-		private ViewSupervisor viewSupervisor;
-		private GameObject targetGameObject;
-		private GameObject parentGameObject;
+		private List<T> views = new List<T>();
 
-		public ViewBinding(ViewSupervisor viewSupervisor)
+		public void AddView<U>(U view) where U : View
 		{
-			this.viewSupervisor = viewSupervisor;
+			views.Add(view as T);
 		}
 
-		public bool MatchesModelType(Type modelType)
+		public void RemoveView(View view)
 		{
-			return typeof(T) == modelType;
+			views.Remove(view as T);
 		}
 
-		public void CreateViewForModel(Model model)
+		public IEnumerable<U> GetViews<U>() where U : View
 		{
-			var gameObj = GetGameObject();
-			var view = gameObj.AddComponent<U>();
-			view.Model = model as T;
-			viewSupervisor.RegisterView<U>(model, view);
-		}
-
-		public void SetTargetGameObject(GameObject gameObj)
-		{
-			targetGameObject = gameObj;
-		}
-
-		public void SetParentGameObject(GameObject gameObj)
-		{
-			parentGameObject = gameObj;
-		}
-
-		private GameObject GetGameObject()
-		{
-			if (null != targetGameObject)
-				return targetGameObject;
-			var gameObj = new GameObject();
-			if (null != parentGameObject)
-			{
-				gameObj.transform.parent = parentGameObject.transform;
-				gameObj.transform.localPosition = Vector3.zero;
-				gameObj.transform.localRotation = Quaternion.identity;
-				gameObj.transform.localScale = Vector3.one;
-			}
-			return gameObj;
+			return views as IEnumerable<U>;
 		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Bantam.Unity.Test
@@ -24,7 +25,7 @@ namespace Bantam.Unity.Test
 		{
 			testObj.For<DummyModel>().Create<DummyView>();
 			modelRegistry.Create<DummyModel>();
-			Assert.AreEqual (1, testObj.GetViews<DummyView>().Count);
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
 		}
 
 		[Test]
@@ -32,8 +33,8 @@ namespace Bantam.Unity.Test
 		{
 			testObj.For<DummyModel>().Create<DummyView>().OnNewGameObject();
 			modelRegistry.Create<DummyModel>();
-			Assert.AreEqual (1, testObj.GetViews<DummyView>().Count);
-			Assert.NotNull(testObj.GetViews<DummyView>()[0].gameObject);
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
+			Assert.NotNull(testObj.GetViews<DummyView>().First().gameObject);
 		}
 
 		[Test]
@@ -42,7 +43,7 @@ namespace Bantam.Unity.Test
 			DummyModel model = null;
 			testObj.For<DummyModel>().Create<DummyView>().OnNewGameObject();
 			modelRegistry.Create<DummyModel>(mdl => model = mdl);
-			var view = testObj.GetViews<DummyView>()[0] as DummyView;
+			var view = testObj.GetViews<DummyView>().First() as DummyView;
 			Assert.NotNull(view.Model);
 			Assert.AreEqual(model, view.Model);
 		}
@@ -53,8 +54,8 @@ namespace Bantam.Unity.Test
 			var gameObj = new GameObject();
 			testObj.For<DummyModel>().Create<DummyView>().OnExistingGameObject(gameObj);
 			modelRegistry.Create<DummyModel>();
-			Assert.AreEqual (1, testObj.GetViews<DummyView>().Count);
-			Assert.AreEqual(gameObj, testObj.GetViews<DummyView>()[0].gameObject);
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
+			Assert.AreEqual(gameObj, testObj.GetViews<DummyView>().First().gameObject);
 		}
 
 		[Test]
@@ -63,9 +64,9 @@ namespace Bantam.Unity.Test
 			var gameObj = new GameObject();
 			testObj.For<DummyModel>().Create<DummyView>().OnChildOf(gameObj);
 			modelRegistry.Create<DummyModel>();
-			Assert.AreEqual (1, testObj.GetViews<DummyView>().Count);
-			Assert.NotNull(testObj.GetViews<DummyView>()[0].gameObject);
-			Assert.AreEqual(gameObj.transform, testObj.GetViews<DummyView>()[0].transform.parent);
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
+			Assert.NotNull(testObj.GetViews<DummyView>().First().gameObject);
+			Assert.AreEqual(gameObj.transform, testObj.GetViews<DummyView>().First().transform.parent);
 		}
 
 		[Test]
@@ -76,7 +77,7 @@ namespace Bantam.Unity.Test
 			gameObj.transform.rotation = new Quaternion(2, 5, 8, 1);
 			testObj.For<DummyModel>().Create<DummyView>().OnChildOf(gameObj);
 			modelRegistry.Create<DummyModel>();
-			var childObj = testObj.GetViews<DummyView>()[0];
+			var childObj = testObj.GetViews<DummyView>().First();
 			Assert.AreEqual(Vector3.zero, childObj.transform.localPosition);
 			Assert.AreEqual(Quaternion.identity, childObj.transform.localRotation);
 			Assert.AreEqual(Vector3.one, childObj.transform.localScale);
@@ -89,7 +90,7 @@ namespace Bantam.Unity.Test
 			DummyModel model = null;
 			modelRegistry.Create<DummyModel>(mdl => model = mdl);
 			modelRegistry.Destroy<DummyModel>(model);
-			Assert.AreEqual(0, testObj.GetViews<DummyView>().Count);
+			Assert.AreEqual(0, testObj.GetViews<DummyView>().Count());
 		}
 
 		[Test]
@@ -98,7 +99,7 @@ namespace Bantam.Unity.Test
 			var wasCalled = false;
 			testObj.For<DummyModel>().Create<DummyView>();
 			eventBus.AddListener<ViewCreatedEvent>(evt => {
-				var viewObject = testObj.GetViews<DummyView>()[0];
+				var viewObject = testObj.GetViews<DummyView>().First();
 				Assert.AreEqual(viewObject, evt.view);
 				wasCalled = true;
 			});
@@ -113,7 +114,7 @@ namespace Bantam.Unity.Test
 			testObj.For<DummyModel>().Create<DummyView>();
 			DummyModel expectedModel = null;
 			modelRegistry.Create<DummyModel>(mdl => expectedModel = mdl);
-			var expectedView = testObj.GetViews<DummyView>()[0];
+			var expectedView = testObj.GetViews<DummyView>().First();
 
 			eventBus.AddListener<ViewDestroyedEvent>(evt => {
 				Assert.AreEqual(expectedView, evt.view);
