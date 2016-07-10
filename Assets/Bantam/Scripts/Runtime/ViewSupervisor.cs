@@ -99,6 +99,7 @@ namespace Bantam.Unity
 	{
 		private ViewSupervisor viewSupervisor;
 		private ViewBinding activeBinding;
+		private bool isPrefabSet;
 
 		internal ViewBindingContinuation(ViewSupervisor viewSupervisor)
 		{
@@ -119,12 +120,21 @@ namespace Bantam.Unity
 
 		public void OnExistingGameObject(GameObject gameObj)
 		{
+			if (isPrefabSet)
+				throw new InvalidOperationException("Cannot use View prefab on existing GameObject.");
 			activeBinding.SetTargetGameObject(gameObj);
 		}
 
 		public void OnChildOf(GameObject gameObj)
 		{
 			activeBinding.SetParentGameObject(gameObj);
+		}
+
+		public ViewBindingContinuation<T> UsingPrefab(GameObject prefab)
+		{
+			isPrefabSet = true;
+			activeBinding.SetPrefab(prefab);
+			return this;
 		}
 	}
 

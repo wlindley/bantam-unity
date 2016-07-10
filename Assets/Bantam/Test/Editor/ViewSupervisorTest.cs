@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using UnityEngine;
 
 namespace Bantam.Unity.Test
@@ -84,6 +85,49 @@ namespace Bantam.Unity.Test
 		}
 
 		[Test]
+		public void BindingViewToPrefabInstantiatesInstanceOfThatPrefabAndAddsViewIfNotPresent()
+		{
+			var prefab = Resources.Load<GameObject>("EmptyPrefab");
+			testObj.For<DummyModel>().Create<DummyView>().UsingPrefab(prefab);
+			modelRegistry.Create<DummyModel>();
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
+			Assert.NotNull(testObj.GetViews<DummyView>().First());
+			Assert.NotNull(testObj.GetViews<DummyView>().First().Model);
+		}
+
+		[Test]
+		public void BindingViewToPrefabInstantiatesInstanceOfThatPrefabAndUsesExistingViewIfPresent()
+		{
+			var prefab = Resources.Load<GameObject>("DummyViewPrefab");
+			testObj.For<DummyModel>().Create<DummyView>().UsingPrefab(prefab);
+			modelRegistry.Create<DummyModel>();
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
+			Assert.NotNull(testObj.GetViews<DummyView>().First());
+			Assert.NotNull(testObj.GetViews<DummyView>().First().Model);
+			Assert.AreEqual(1, testObj.GetViews<DummyView>().First().GetComponents<DummyView>().Count());
+		}
+
+		[Test]
+		public void BindingViewToPrefabWithParentInstantiatesPrefabAndReparentsIt()
+		{
+			var gameObj = new GameObject();
+			var prefab = Resources.Load<GameObject>("EmptyPrefab");
+			testObj.For<DummyModel>().Create<DummyView>().UsingPrefab(prefab).OnChildOf(gameObj);
+			modelRegistry.Create<DummyModel>();
+			Assert.AreEqual(gameObj.transform, testObj.GetViews<DummyView>().First().transform.parent);
+		}
+
+		[Test]
+		public void BindingViewToPrefabAndExistingGameObjectThrowsException()
+		{
+			var gameObj = new GameObject();
+			var prefab = Resources.Load<GameObject>("EmptyPrefab");
+			Assert.Throws<InvalidOperationException>(() => {
+				testObj.For<DummyModel>().Create<DummyView>().UsingPrefab(prefab).OnExistingGameObject(gameObj);
+			});
+		}
+
+		[Test]
 		public void BoundViewIsDestroyedWhenModelIsDestroyed()
 		{
 			testObj.For<DummyModel>().Create<DummyView>();
@@ -123,23 +167,6 @@ namespace Bantam.Unity.Test
 			modelRegistry.Destroy<DummyModel>(expectedModel);
 
 			Assert.IsTrue(wasCalled);
-		}
-	}
-
-	public class DummyModel : Model
-	{
-		public void Reset ()
-		{
-		}
-	}
-
-	public class DummyView : View<DummyModel>
-	{
-		public static List<DummyView> instances = new List<DummyView>();
-
-		public void Awake()
-		{
-			instances.Add(this);
 		}
 	}
 }

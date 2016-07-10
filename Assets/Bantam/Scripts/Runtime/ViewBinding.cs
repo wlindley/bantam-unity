@@ -9,6 +9,7 @@ namespace Bantam.Unity
 		void CreateViewForModel(Model model);
 		void SetTargetGameObject(GameObject gameObj);
 		void SetParentGameObject(GameObject gameObj);
+		void SetPrefab(GameObject prefab);
 	}
 
 	internal class ViewBinding<T, U> : ViewBinding where T : class, Model, new() where U : View<T>
@@ -16,6 +17,7 @@ namespace Bantam.Unity
 		private ViewSupervisor viewSupervisor;
 		private GameObject targetGameObject;
 		private GameObject parentGameObject;
+		private GameObject prefab;
 
 		public ViewBinding(ViewSupervisor viewSupervisor)
 		{
@@ -30,7 +32,7 @@ namespace Bantam.Unity
 		public void CreateViewForModel(Model model)
 		{
 			var gameObj = GetGameObject();
-			var view = gameObj.AddComponent<U>();
+			var view = GetView(gameObj);
 			view.Model = model as T;
 			viewSupervisor.RegisterView<U>(model, view);
 		}
@@ -45,17 +47,27 @@ namespace Bantam.Unity
 			parentGameObject = gameObj;
 		}
 
+		public void SetPrefab(GameObject prefab)
+		{
+			this.prefab = prefab;
+		}
+
 		private GameObject GetGameObject()
 		{
 			if (null != targetGameObject)
 				return targetGameObject;
 
-			var gameObj = new GameObject();
+			GameObject gameObj;
+			if (null == prefab)
+				gameObj = new GameObject(typeof(U).ToString());
+			else
+				gameObj = GameObject.Instantiate(prefab);
+
 			ReparentIfNecessary(gameObj);
 			return gameObj;
 		}
 
-		void ReparentIfNecessary(GameObject gameObj)
+		private void ReparentIfNecessary(GameObject gameObj)
 		{
 			if (null != parentGameObject)
 			{
@@ -64,6 +76,14 @@ namespace Bantam.Unity
 				gameObj.transform.localRotation = Quaternion.identity;
 				gameObj.transform.localScale = Vector3.one;
 			}
+		}
+
+		private U GetView(GameObject gameObj)
+		{
+			var view = gameObj.GetComponent<U>();
+			if (null != prefab && null != view)
+				return view;
+			return gameObj.AddComponent<U>();
 		}
 	}
 }
