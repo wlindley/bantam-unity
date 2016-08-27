@@ -32,6 +32,21 @@ namespace Bantam.Unity
 			return views[typeof(U)].GetViews<U>();
 		}
 
+		public U GetViewForModel<U>(Model model) where U : View
+		{
+			List<View> modelViews;
+			if (!modelViewMap.TryGetValue(model, out modelViews))
+				return null;
+
+			foreach (var view in modelViews)
+			{
+				var specificView = view as U;
+				if (null != specificView)
+					return specificView;
+			}
+			return null;
+		}
+
 		internal void RegisterBinding(ViewBinding binding)
 		{
 			viewBindings.Add(binding);

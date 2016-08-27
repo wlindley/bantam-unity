@@ -168,5 +168,34 @@ namespace Bantam.Unity.Test
 
 			Assert.IsTrue(wasCalled);
 		}
+
+		[Test]
+		public void GetViewForModelReturnsViewCreatedForTheGivenModel()
+		{
+			DummyModel model = null;
+			testObj.For<DummyModel>().Create<DummyView>().OnNewGameObject();
+
+			modelRegistry.Create<DummyModel>();
+			modelRegistry.Create<DummyModel>(mdl => model = mdl);
+			modelRegistry.Create<DummyModel>();
+
+			var view = testObj.GetViewForModel<DummyView>(model);
+			Assert.IsNotNull(view);
+			Assert.AreEqual(model, view.Model);
+		}
+
+		[Test]
+		public void GetViewForModelReturnsNullWhenNoViewExistsForModel()
+		{
+			DummyModel model = null;
+			modelRegistry.Create<DummyModel>(mdl => model = mdl);
+			testObj.For<DummyModel>().Create<DummyView>().OnNewGameObject();
+
+			modelRegistry.Create<DummyModel>();
+			modelRegistry.Create<DummyModel>();
+
+			var view = testObj.GetViewForModel<DummyView>(model);
+			Assert.IsNull(view);
+		}
 	}
 }
