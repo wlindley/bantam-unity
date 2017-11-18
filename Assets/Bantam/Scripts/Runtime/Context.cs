@@ -46,4 +46,9 @@ namespace Bantam.Unity
 			factories.Add(factory);
 		}
 	}
+
+	public interface ContextOwner
+	{
+		Context Context { get; }
+	}
 }
