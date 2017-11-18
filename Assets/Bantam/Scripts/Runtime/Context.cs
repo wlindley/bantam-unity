@@ -47,4 +47,3 @@ namespace Bantam.Unity
 		}
 	}
 }
-
