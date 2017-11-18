@@ -11,6 +11,7 @@ namespace Bantam.Unity.Test
 		private ViewSupervisor testObj;
 		private ModelRegistry modelRegistry;
 		private EventBus eventBus;
+		private GameObject gameObj;
 
 		[SetUp]
 		public void SetUp()
@@ -19,6 +20,21 @@ namespace Bantam.Unity.Test
 			eventBus = new EventBus(pool);
 			modelRegistry = new ModelRegistry(pool, eventBus);
 			testObj = new ViewSupervisor(eventBus);
+		}
+
+		[TearDown]
+		public void TearDown()
+		{
+			var views = testObj.GetViews<DummyView>();
+			if (null != views)
+				foreach (var view in views)
+					GameObject.DestroyImmediate(view.gameObject);
+
+			if (null != gameObj)
+			{
+				GameObject.DestroyImmediate(gameObj);
+				gameObj = null;
+			}
 		}
 
 		[Test]
@@ -52,7 +68,7 @@ namespace Bantam.Unity.Test
 		[Test]
 		public void BindingViewToExistingGameObjectCausesComponentToBeAddedToThatObject()
 		{
-			var gameObj = new GameObject();
+			gameObj = new GameObject();
 			testObj.For<DummyModel>().Create<DummyView>().OnExistingGameObject(gameObj);
 			modelRegistry.Create<DummyModel>();
 			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
@@ -62,7 +78,7 @@ namespace Bantam.Unity.Test
 		[Test]
 		public void BindingViewToChildOfGameObjectCausesNewGameObjectToBeCreatedAsChild()
 		{
-			var gameObj = new GameObject();
+			gameObj = new GameObject();
 			testObj.For<DummyModel>().Create<DummyView>().OnChildOf(gameObj);
 			modelRegistry.Create<DummyModel>();
 			Assert.AreEqual(1, testObj.GetViews<DummyView>().Count());
@@ -73,7 +89,7 @@ namespace Bantam.Unity.Test
 		[Test]
 		public void BindingViewToChildOfGameObjectCausesChildTransformToBeResetAfterParenting()
 		{
-			var gameObj = new GameObject();
+			gameObj = new GameObject();
 			gameObj.transform.position = new Vector3(1, 1, 1);
 			gameObj.transform.rotation = new Quaternion(2, 5, 8, 1);
 			testObj.For<DummyModel>().Create<DummyView>().OnChildOf(gameObj);
@@ -110,7 +126,7 @@ namespace Bantam.Unity.Test
 		[Test]
 		public void BindingViewToPrefabWithParentInstantiatesPrefabAndReparentsIt()
 		{
-			var gameObj = new GameObject();
+			gameObj = new GameObject();
 			var prefab = Resources.Load<GameObject>("EmptyPrefab");
 			testObj.For<DummyModel>().Create<DummyView>().UsingPrefab(prefab).OnChildOf(gameObj);
 			modelRegistry.Create<DummyModel>();
@@ -120,7 +136,7 @@ namespace Bantam.Unity.Test
 		[Test]
 		public void BindingViewToPrefabAndExistingGameObjectThrowsException()
 		{
-			var gameObj = new GameObject();
+			gameObj = new GameObject();
 			var prefab = Resources.Load<GameObject>("EmptyPrefab");
 			Assert.Throws<InvalidOperationException>(() => {
 				testObj.For<DummyModel>().Create<DummyView>().UsingPrefab(prefab).OnExistingGameObject(gameObj);
@@ -133,6 +149,7 @@ namespace Bantam.Unity.Test
 			testObj.For<DummyModel>().Create<DummyView>();
 			DummyModel model = null;
 			modelRegistry.Create<DummyModel>(mdl => model = mdl);
+			gameObj = testObj.GetViewForModel<DummyView>(model).gameObject;
 			modelRegistry.Destroy<DummyModel>(model);
 			Assert.AreEqual(0, testObj.GetViews<DummyView>().Count());
 		}
@@ -159,6 +176,7 @@ namespace Bantam.Unity.Test
 			DummyModel expectedModel = null;
 			modelRegistry.Create<DummyModel>(mdl => expectedModel = mdl);
 			var expectedView = testObj.GetViews<DummyView>().First();
+			gameObj = expectedView.gameObject;
 
 			eventBus.AddListener<ViewDestroyedEvent>(evt => {
 				Assert.AreEqual(expectedView, evt.view);

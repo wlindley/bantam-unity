@@ -29,7 +29,10 @@ namespace Bantam.Unity
 
 		public IEnumerable<U> GetViews<U>() where U : View
 		{
-			return views[typeof(U)].GetViews<U>();
+			var type = typeof(U);
+			if (!views.ContainsKey (type))
+				return null;
+			return views[type].GetViews<U>();
 		}
 
 		public U GetViewForModel<U>(Model model) where U : View
